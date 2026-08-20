@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Pengaduan Masyarakat Kecamatan</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1d4ed8',
+                        secondary: '#3b82f6',
+                        dark: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Loader */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #1d4ed8;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        
+        /* Toast Animation */
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-leave { animation: fadeOut 0.3s ease-in forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation -->
+    <nav class="bg-white shadow-md fixed top-0 w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center cursor-pointer" onclick="navigate('home')">
+                    <i class="fas fa-landmark text-primary text-2xl mr-2"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">Lapor<span class="text-primary">Camat</span></span>
+                </div>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-4" id="nav-menu">
+                    <button onclick="navigate('home')" class="text-gray-600 hover:text-primary px-3 py-2 rounded-md font-medium">Beranda</button>
+                    <button onclick="navigate('submit')" class="bg-primary text-white hover:bg-blue-800 px-4 py-2 rounded-md font-medium transition shadow-sm"><i class="fas fa-pen mr-2"></i>Buat Pengaduan</button>
+                    <button onclick="navigate('track')" class="text-primary border border-primary hover:bg-blue-50 px-4 py-2 rounded-md font-medium transition">Lacak Tiket</button>
+                    <button id="btn-nav-login" onclick="navigate('login')" class="text-gray-500 hover:text-gray-900 ml-4"><i class="fas fa-sign-in-alt mr-1"></i> Petugas</button>
+                    
+                    <!-- Admin Logged In Menu -->
+                    <div id="nav-user-menu" class="hidden items-center space-x-4 ml-4 border-l pl-4">
+                        <button onclick="navigate('dashboard')" class="text-gray-700 hover:text-primary font-medium"><i class="fas fa-chart-pie mr-1"></i> Dashboard</button>
+                        <span class="text-sm font-bold text-gray-800 bg-gray-200 px-2 py-1 rounded" id="nav-username">Admin</span>
+                        <button onclick="logout()" class="text-red-500 hover:text-red-700" title="Keluar"><i class="fas fa-power-off"></i></button>
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="flex items-center md:hidden">
+                    <button onclick="toggleMobileMenu()" class="text-gray-500 hover:text-gray-900 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <button onclick="navigate('home'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50">Beranda</button>
+                <button onclick="navigate('submit'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-primary hover:bg-blue-50">Buat Pengaduan</button>
+                <button onclick="navigate('track'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50">Lacak Tiket</button>
+                <button id="btn-mobile-login" onclick="navigate('login'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-gray-500 hover:bg-gray-50">Login Petugas</button>
+                
+                <div id="mobile-user-menu" class="hidden border-t mt-2 pt-2">
+                    <button onclick="navigate('dashboard'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-gray-700">Dashboard</button>
+                    <button onclick="logout(); toggleMobileMenu()" class="block w-full text-left px-3 py-2 text-base font-medium text-red-500">Keluar</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow pt-20 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        
+        <!-- ================= HOME VIEW ================= -->
+        <div id="view-home" class="view-section active">
+            <div class="text-center py-12 md:py-20">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6">Layanan Aspirasi dan Pengaduan Online</h1>
+                <p class="text-lg md:text-xl text-gray-600 mb-10 max-w-3xl mx-auto">Sampaikan laporan masalah, infrastruktur, atau pelayanan publik di lingkungan kecamatan dengan mudah, transparan, dan dapat dilacak progresnya.</p>
+                <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <button onclick="navigate('submit')" class="bg-primary hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:-translate-y-1 text-lg">
+                        <i class="fas fa-bullhorn mr-2"></i> Lapor Sekarang
+                    </button>
+                    <button onclick="navigate('track')" class="bg-white hover:bg-gray-50 text-primary border-2 border-primary font-bold py-3 px-8 rounded-lg shadow transition transform hover:-translate-y-1 text-lg">
+                        <i class="fas fa-search mr-2"></i> Lacak Pengaduan
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm text-center border">
+                    <div class="w-14 h-14 bg-blue-100 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-pen-to-square"></i></div>
+                    <h3 class="text-xl font-bold mb-2">1. Tulis Laporan</h3>
+                    <p class="text-gray-500">Laporkan keluhan atau aspirasi Anda dengan jelas dan lengkap beserta bukti foto.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm text-center border">
+                    <div class="w-14 h-14 bg-blue-100 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-clipboard-check"></i></div>
+                    <h3 class="text-xl font-bold mb-2">2. Proses Verifikasi</h3>
+                    <p class="text-gray-500">Laporan Anda akan diverifikasi dan diteruskan ke petugas atau instansi terkait.</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm text-center border">
+                    <div class="w-14 h-14 bg-blue-100 text-primary rounded-full flex items-center justify-center mx-auto mb-4 text-2xl"><i class="fas fa-check-circle"></i></div>
+                    <h3 class="text-xl font-bold mb-2">3. Tindak Lanjut</h3>
+                    <p class="text-gray-500">Instansi menindaklanjuti laporan Anda dan Anda dapat melacak progresnya secara real-time.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SUBMIT VIEW ================= -->
+        <div id="view-submit" class="view-section max-w-3xl mx-auto">
+            <div class="bg-white rounded-xl shadow-md border overflow-hidden">
+                <div class="bg-primary p-6 text-white text-center">
+                    <h2 class="text-2xl font-bold"><i class="fas fa-bullhorn mr-2"></i>Form Pengajuan Pengaduan</h2>
+                    <p class="text-blue-100 mt-2">Mohon isi data dengan valid dan berikan deskripsi yang jelas.</p>
+                </div>
+                <form id="form-submit" class="p-6 md:p-8 space-y-6" onsubmit="handleFormSubmit(event)">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Induk Kependudukan (NIK) *</label>
+                            <input type="text" id="inp-nik" required pattern="[0-9]{16}" title="NIK harus 16 digit angka" class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary" placeholder="16 Digit NIK">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap *</label>
+                            <input type="text" id="inp-nama" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary" placeholder="Sesuai KTP">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon / WhatsApp *</label>
+                            <input type="tel" id="inp-telepon" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary" placeholder="08...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Kategori Pengaduan *</label>
+                            <select id="inp-kategori" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary">
+                                <option value="">-- Pilih Kategori --</option>
+                                <option value="Infrastruktur & Pembangunan">Infrastruktur & Pembangunan</option>
+                                <option value="Pelayanan Publik">Pelayanan Publik</option>
+                                <option value="Ketertiban & Keamanan">Ketertiban & Keamanan</option>
+                                <option value="Kesehatan & Lingkungan">Kesehatan & Lingkungan</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi Kejadian / Alamat *</label>
+                        <input type="text" id="inp-lokasi" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary" placeholder="Nama Desa/Kelurahan, Nama Jalan, dsb">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi Laporan *</label>
+                        <textarea id="inp-deskripsi" required rows="4" class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary" placeholder="Jelaskan detail permasalahan secara kronologis..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Lampiran Foto (Opsional, Max 2MB)</label>
+                        <input type="file" id="inp-lampiran" accept="image/*" class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-primary hover:file:bg-blue-100">
+                        <div id="preview-image-container" class="mt-2 hidden">
+                            <img id="preview-image" src="" alt="Preview" class="h-32 object-cover rounded-md border">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <button type="submit" id="btn-submit" class="w-full bg-primary hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-md shadow transition flex justify-center items-center">
+                            <span>Kirim Laporan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ================= TRACK VIEW ================= -->
+        <div id="view-track" class="view-section max-w-4xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Lacak Status Pengaduan</h2>
+                <p class="text-gray-600">Masukkan Nomor Tiket Anda untuk melihat perkembangan tindak lanjut.</p>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border mb-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <input type="text" id="inp-track-tiket" placeholder="Contoh: TKT-20260820-ABC" class="w-full sm:w-96 px-4 py-3 border rounded-md focus:ring-primary focus:border-primary text-lg font-mono uppercase">
+                <button onclick="handleTrack()" id="btn-track" class="w-full sm:w-auto bg-primary hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-md transition shadow flex items-center justify-center">
+                    <i class="fas fa-search mr-2"></i> Lacak
+                </button>
+            </div>
+
+            <!-- Track Result Container -->
+            <div id="track-result" class="hidden">
+                <div class="bg-white rounded-xl shadow-md border overflow-hidden">
+                    <div class="border-b p-6 flex flex-col md:flex-row justify-between md:items-center bg-gray-50">
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold mb-1">NOMOR TIKET</p>
+                            <h3 class="text-2xl font-bold text-gray-900 font-mono" id="res-tiket">TKT-XXX</h3>
+                        </div>
+                        <div class="mt-4 md:mt-0 text-left md:text-right">
+                            <span id="res-status-badge" class="px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Menunggu Verifikasi</span>
+                            <p class="text-sm text-gray-500 mt-2" id="res-tanggal">Tanggal: -</p>
+                        </div>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Detail Pelapor</h4>
+                            <div class="space-y-2 text-sm">
+                                <p><span class="text-gray-500 block">Nama:</span> <span class="font-medium" id="res-nama">-</span></p>
+                                <p><span class="text-gray-500 block">Kategori:</span> <span class="font-medium" id="res-kategori">-</span></p>
+                                <p><span class="text-gray-500 block">Lokasi:</span> <span class="font-medium" id="res-lokasi">-</span></p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-700 mb-4 border-b pb-2">Isi Laporan</h4>
+                            <p class="text-sm text-gray-800 bg-gray-50 p-3 rounded border" id="res-deskripsi">-</p>
+                            <div class="mt-3" id="res-lampiran-container">
+                                <span class="text-xs text-gray-500 block mb-1">Lampiran:</span>
+                                <!-- Image will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Timeline -->
+                    <div class="p-6 border-t bg-gray-50">
+                        <h4 class="font-bold text-gray-700 mb-6"><i class="fas fa-history mr-2"></i>Riwayat Tindak Lanjut</h4>
+                        <div class="relative border-l-2 border-blue-200 ml-3" id="res-timeline">
+                            <!-- Timeline items injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Survei Area (Shows if Status == Selesai) -->
+                    <div id="survei-container" class="hidden p-6 border-t bg-blue-50 text-center">
+                        <h4 class="font-bold text-primary mb-2">Pengaduan Selesai</h4>
+                        <p class="text-sm text-gray-600 mb-4">Mohon berikan penilaian atas pelayanan kami.</p>
+                        <div class="flex justify-center space-x-2 text-2xl text-gray-300 mb-4" id="star-rating">
+                            <i class="fas fa-star cursor-pointer hover:text-yellow-400 transition" onclick="setRating(1)"></i>
+                            <i class="fas fa-star cursor-pointer hover:text-yellow-400 transition" onclick="setRating(2)"></i>
+                            <i class="fas fa-star cursor-pointer hover:text-yellow-400 transition" onclick="setRating(3)"></i>
+                            <i class="fas fa-star cursor-pointer hover:text-yellow-400 transition" onclick="setRating(4)"></i>
+                            <i class="fas fa-star cursor-pointer hover:text-yellow-400 transition" onclick="setRating(5)"></i>
+                        </div>
+                        <textarea id="inp-ulasan" class="w-full max-w-lg mx-auto p-2 border rounded text-sm mb-3" rows="2" placeholder="Ulasan (opsional)"></textarea><br>
+                        <button onclick="submitSurvei()" id="btn-survei" class="bg-primary text-white px-6 py-2 rounded shadow hover:bg-blue-700">Kirim Penilaian</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= LOGIN VIEW ================= -->
+        <div id="view-login" class="view-section">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-md border overflow-hidden mt-10">
+                <div class="p-8">
+                    <div class="text-center mb-8">
+                        <i class="fas fa-shield-alt text-primary text-4xl mb-3"></i>
+                        <h2 class="text-2xl font-bold text-gray-900">Login Petugas</h2>
+                        <p class="text-sm text-gray-500">Portal Manajemen Pengaduan</p>
+                    </div>
+                    <form id="form-login" onsubmit="handleLogin(event)" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                            <input type="text" id="login-username" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="login-password" required class="w-full px-4 py-2 border rounded-md focus:ring-primary focus:border-primary">
+                        </div>
+                        <button type="submit" id="btn-login" class="w-full bg-dark hover:bg-gray-800 text-white font-bold py-3 px-4 rounded-md transition shadow flex justify-center items-center">
+                            <span>Masuk Sistem</span>
+                        </button>
+                    </form>
+                    
+                    <!-- Helper Text for Preview Mode -->
+                    <div class="mt-6 p-3 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800 font-mono text-center">
+                        <b>Preview Mode Aktif</b><br>
+                        Gunakan user: <b>admin</b> | pass: <b>admin123</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= DASHBOARD VIEW (PETUGAS/ADMIN) ================= -->
+        <div id="view-dashboard" class="view-section">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Dashboard Monitoring</h2>
+                    <p class="text-gray-600">Ringkasan dan pengelolaan pengaduan masuk.</p>
+                </div>
+                <button onclick="loadDashboard()" class="text-primary hover:text-blue-800"><i class="fas fa-sync-alt"></i> Refresh</button>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
+                    <p class="text-sm text-gray-500 font-medium">Total Masuk</p>
+                    <p class="text-3xl font-bold text-gray-900" id="stat-total">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-yellow-500">
+                    <p class="text-sm text-gray-500 font-medium">Menunggu</p>
+                    <p class="text-3xl font-bold text-gray-900" id="stat-menunggu">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-indigo-500">
+                    <p class="text-sm text-gray-500 font-medium">Diproses</p>
+                    <p class="text-3xl font-bold text-gray-900" id="stat-diproses">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-green-500">
+                    <p class="text-sm text-gray-500 font-medium">Selesai</p>
+                    <p class="text-3xl font-bold text-gray-900" id="stat-selesai">0</p>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div class="p-4 border-b bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 class="font-bold text-gray-700">Daftar Pengaduan</h3>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <select id="filter-status" onchange="loadDashboard()" class="px-3 py-1 border rounded text-sm w-full sm:w-auto">
+                            <option value="">Semua Status</option>
+                            <option value="Menunggu Verifikasi">Menunggu</option>
+                            <option value="Sedang Diproses">Diproses</option>
+                            <option value="Selesai">Selesai</option>
+                            <option value="Ditolak">Ditolak</option>
+                        </select>
+                        <input type="text" id="search-tiket" oninput="loadDashboard()" placeholder="Cari Tiket/Nama" class="px-3 py-1 border rounded text-sm w-full sm:w-auto">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider">
+                                <th class="p-4 border-b font-semibold">Tiket & Tgl</th>
+                                <th class="p-4 border-b font-semibold">Pelapor</th>
+                                <th class="p-4 border-b font-semibold">Kategori</th>
+                                <th class="p-4 border-b font-semibold">Status</th>
+                                <th class="p-4 border-b font-semibold text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-sm">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="table-empty" class="hidden p-8 text-center text-gray-500">Tidak ada data ditemukan.</div>
+            </div>
+        </div>
+
+        <!-- ================= DETAIL MODAL (ADMIN) ================= -->
+        <div id="modal-detail" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                    <h3 class="font-bold text-lg" id="modal-title">Detail Pengaduan</h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-6 overflow-y-auto flex-grow" id="modal-content">
+                    <!-- Data Injected Here -->
+                </div>
+                <div class="p-4 border-t bg-gray-50 form-update-status">
+                    <h4 class="font-bold text-sm mb-3">Tindak Lanjut & Update Status</h4>
+                    <form id="form-update" onsubmit="handleUpdateStatus(event)" class="space-y-3">
+                        <input type="hidden" id="upd-id">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <select id="upd-status" required class="w-full px-3 py-2 border rounded text-sm">
+                                <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                                <option value="Diteruskan ke Seksi Terkait">Diteruskan ke Seksi Terkait</option>
+                                <option value="Sedang Diproses">Sedang Diproses</option>
+                                <option value="Selesai">Selesai</option>
+                                <option value="Ditolak">Ditolak</option>
+                            </select>
+                            <button type="submit" id="btn-update" class="bg-primary text-white py-2 rounded text-sm font-bold shadow hover:bg-blue-800 transition">Simpan & Update</button>
+                        </div>
+                        <textarea id="upd-catatan" required rows="2" placeholder="Catatan tindak lanjut (wajib diisi)..." class="w-full px-3 py-2 border rounded text-sm"></textarea>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURATION & DUAL-MODE API GATEWAY
+        // ==========================================
+        const IS_PREVIEW = true; // true = Mock DB (Local Storage), false = Real GAS DB
+        const GAS_URL = "ISI_DENGAN_URL_WEB_APP_GAS_ANDA";
+        let currentRating = 0;
+        let activeTicketId = null;
+
+        async function apiCall(action, payload = {}) {
+            if (IS_PREVIEW) return await handleMockAPI(action, payload);
+            
+            try {
+                const res = await fetch(GAS_URL, {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action, payload })
+                });
+                return await res.json();
+            } catch (err) {
+                return { status: "error", message: "Koneksi Backend Gagal: " + err.message };
+            }
+        }
+
+        // ==========================================
+        // 2. MOCK ENGINE (LOCAL STORAGE DB)
+        // ==========================================
+        async function handleMockAPI(action, payload) {
+            // Delay simulation
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            let db = JSON.parse(localStorage.getItem('mock_db_pengaduan'));
+            if (!db) {
+                db = {
+                    users: [{ id: '1', username: 'admin', password: 'admin123', role: 'admin', name: 'Admin Kecamatan' }],
+                    pengaduan: [{
+                        id: Date.now().toString(),
+                        tiket: 'TKT-' + Math.floor(Math.random()*1000000),
+                        nik: '1122334455667788', nama_pelapor: 'Ahmad Warga', telepon: '08123456789',
+                        kategori: 'Infrastruktur & Pembangunan', deskripsi: 'Jalan berlubang parah di Desa Suka Maju.',
+                        lokasi: 'Jalan Raya Suka Maju, RT 01', lampiran_url: '', 
+                        status: 'Menunggu Verifikasi', created_at: new Date().toISOString()
+                    }],
+                    tindak_lanjut: [],
+                    survei: []
+                };
+                localStorage.setItem('mock_db_pengaduan', JSON.stringify(db));
+            }
+
+            const saveDB = () => localStorage.setItem('mock_db_pengaduan', JSON.stringify(db));
+
+            switch (action) {
+                case 'login':
+                    const user = db.users.find(u => u.username === payload.username && u.password === payload.password);
+                    if (user) {
+                        const { password, ...safeUser } = user;
+                        return { status: 'success', data: safeUser };
+                    }
+                    return { status: 'error', message: 'Username atau Password salah.' };
+
+                case 'create':
+                    const newId = Date.now().toString();
+                    // Generate Ticket Number
+                    const dateStr = new Date().toISOString().slice(0,10).replace(/-/g, '');
+                    const randStr = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    const tiketNo = `TKT-${dateStr}-${randStr}`;
+                    
+                    const newEntry = {
+                        id: newId, tiket: tiketNo, ...payload,
+                        status: 'Menunggu Verifikasi', created_at: new Date().toISOString()
+                    };
+                    db.pengaduan.push(newEntry);
+                    
+                    // Log pertama kali
+                    db.tindak_lanjut.push({
+                        id: 'TL' + Date.now(), tiket_id: newId, user_id: 'Sistem',
+                        catatan: 'Pengaduan diterima sistem.', status_baru: 'Menunggu Verifikasi', created_at: new Date().toISOString()
+                    });
+                    saveDB();
+                    return { status: 'success', data: { tiket: tiketNo } };
+
+                case 'trackTicket':
+                    const aduan = db.pengaduan.find(p => p.tiket.toUpperCase() === payload.tiket.toUpperCase());
+                    if (!aduan) return { status: 'error', message: 'Nomor Tiket tidak ditemukan.' };
+                    
+                    const history = db.tindak_lanjut.filter(tl => tl.tiket_id === aduan.id).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+                    return { status: 'success', data: { detail: aduan, timeline: history } };
+
+                case 'getAll':
+                    return { status: 'success', data: db.pengaduan.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)) };
+
+                case 'getStats':
+                    const total = db.pengaduan.length;
+                    const menunggu = db.pengaduan.filter(p => p.status === 'Menunggu Verifikasi').length;
+                    const selesai = db.pengaduan.filter(p => p.status === 'Selesai').length;
+                    const diproses = total - menunggu - selesai - db.pengaduan.filter(p => p.status === 'Ditolak').length;
+                    return { status: 'success', data: { total, menunggu, diproses, selesai } };
+
+                case 'updateStatus':
+                    const index = db.pengaduan.findIndex(p => p.id === payload.id);
+                    if(index === -1) return { status: 'error', message: 'Data tidak ditemukan' };
+                    
+                    db.pengaduan[index].status = payload.status_baru;
+                    db.tindak_lanjut.push({
+                        id: 'TL' + Date.now(), tiket_id: payload.id, user_id: payload.user_name,
+                        catatan: payload.catatan, status_baru: payload.status_baru, created_at: new Date().toISOString()
+                    });
+                    saveDB();
+                    return { status: 'success', message: 'Status berhasil diperbarui' };
+
+                case 'submitSurvei':
+                    db.survei.push({ id: 'SRV'+Date.now(), ...payload, created_at: new Date().toISOString() });
+                    saveDB();
+                    return { status: 'success', message: 'Terima kasih atas penilaian Anda.' };
+
+                default: return { status: 'error', message: 'Action unknown' };
+            }
+        }
+
+
+        // ==========================================
+        // 3. UI/UX HELPERS & ROUTING
+        // ==========================================
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const color = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+            
+            toast.className = `${color} text-white px-4 py-3 rounded shadow-lg flex items-center toast-enter pointer-events-auto`;
+            toast.innerHTML = `<i class="fas ${icon} mr-2"></i> ${msg}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function setButtonLoading(btnId, isLoading, originalText = 'Submit') {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            if (isLoading) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="loader"></span><span class="ml-2">Memproses...</span>`;
+                btn.classList.add('opacity-70', 'cursor-not-allowed');
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+            }
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function navigate(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            window.scrollTo(0,0);
+
+            // Access Control
+            if (viewId === 'dashboard') {
+                const user = JSON.parse(localStorage.getItem('session_pengaduan'));
+                if (!user) {
+                    showToast('Sesi habis, silakan login', 'error');
+                    navigate('login');
+                    return;
+                }
+                loadDashboard();
+            }
+        }
+
+        function formatDate(isoString) {
+            if(!isoString) return '-';
+            const d = new Date(isoString);
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Menunggu Verifikasi': return 'bg-yellow-100 text-yellow-800';
+                case 'Selesai': return 'bg-green-100 text-green-800';
+                case 'Ditolak': return 'bg-red-100 text-red-800';
+                default: return 'bg-blue-100 text-blue-800';
+            }
+        }
+
+        // ==========================================
+        // 4. AUTHENTICATION LOGIC
+        // ==========================================
+        async function handleLogin(e) {
+            e.preventDefault();
+            setButtonLoading('btn-login', true);
+            const payload = {
+                username: document.getElementById('login-username').value,
+                password: document.getElementById('login-password').value
+            };
+            
+            const res = await apiCall('login', payload);
+            setButtonLoading('btn-login', false, '<span>Masuk Sistem</span>');
+            
+            if (res.status === 'success') {
+                localStorage.setItem('session_pengaduan', JSON.stringify(res.data));
+                updateNavState();
+                showToast(`Selamat datang, ${res.data.name}`);
+                navigate('dashboard');
+            } else {
+                showToast(res.message, 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('session_pengaduan');
+            updateNavState();
+            navigate('home');
+            showToast('Berhasil keluar');
+        }
+
+        function updateNavState() {
+            const user = JSON.parse(localStorage.getItem('session_pengaduan'));
+            if (user) {
+                document.getElementById('btn-nav-login').classList.add('hidden');
+                document.getElementById('nav-user-menu').classList.remove('hidden');
+                document.getElementById('nav-user-menu').classList.add('flex');
+                document.getElementById('nav-username').innerText = user.name.split(' ')[0];
+                
+                document.getElementById('btn-mobile-login').classList.add('hidden');
+                document.getElementById('mobile-user-menu').classList.remove('hidden');
+            } else {
+                document.getElementById('btn-nav-login').classList.remove('hidden');
+                document.getElementById('nav-user-menu').classList.add('hidden');
+                document.getElementById('nav-user-menu').classList.remove('flex');
+                
+                document.getElementById('btn-mobile-login').classList.remove('hidden');
+                document.getElementById('mobile-user-menu').classList.add('hidden');
+            }
+        }
+
+        // ==========================================
+        // 5. PUBLIC MODULES: SUBMIT & TRACK
+        // ==========================================
+        // Handle image preview & base64
+        let base64Lampiran = "";
+        document.getElementById('inp-lampiran').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if(file.size > 2 * 1024 * 1024) {
+                    showToast('Ukuran file maksimal 2MB', 'error');
+                    this.value = ''; return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    base64Lampiran = evt.target.result;
+                    document.getElementById('preview-image').src = base64Lampiran;
+                    document.getElementById('preview-image-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            setButtonLoading('btn-submit', true, '<span>Kirim Laporan</span>');
+            
+            const payload = {
+                nik: document.getElementById('inp-nik').value,
+                nama_pelapor: document.getElementById('inp-nama').value,
+                telepon: document.getElementById('inp-telepon').value,
+                kategori: document.getElementById('inp-kategori').value,
+                lokasi: document.getElementById('inp-lokasi').value,
+                deskripsi: document.getElementById('inp-deskripsi').value,
+                lampiran_url: base64Lampiran // Base64 in preview, will be processed by GAS in prod
+            };
+
+            const res = await apiCall('create', payload);
+            setButtonLoading('btn-submit', false, '<span>Kirim Laporan</span>');
+            
+            if (res.status === 'success') {
+                document.getElementById('form-submit').reset();
+                document.getElementById('preview-image-container').classList.add('hidden');
+                base64Lampiran = "";
+                
+                // Show Alert with Ticket
+                alert(`Pengaduan Berhasil Dikirim!\n\nNOMOR TIKET: ${res.data.tiket}\n\nSimpan nomor ini untuk melacak status pengaduan Anda.`);
+                
+                // Auto nav to track
+                document.getElementById('inp-track-tiket').value = res.data.tiket;
+                navigate('track');
+                handleTrack();
+            } else {
+                showToast(res.message, 'error');
+            }
+        }
+
+        async function handleTrack() {
+            const tiket = document.getElementById('inp-track-tiket').value.trim();
+            if (!tiket) return showToast('Masukkan nomor tiket', 'error');
+            
+            setButtonLoading('btn-track', true, '<i class="fas fa-search"></i>');
+            const res = await apiCall('trackTicket', { tiket });
+            setButtonLoading('btn-track', false, '<i class="fas fa-search mr-2"></i> Lacak');
+            
+            if (res.status === 'success') {
+                const data = res.data.detail;
+                const timeline = res.data.timeline;
+                activeTicketId = data.id; // for survei
+                
+                document.getElementById('track-result').classList.remove('hidden');
+                document.getElementById('res-tiket').innerText = data.tiket;
+                document.getElementById('res-status-badge').className = `px-4 py-2 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusColor(data.status)}`;
+                document.getElementById('res-status-badge').innerText = data.status;
+                document.getElementById('res-tanggal').innerText = `Tanggal: ${formatDate(data.created_at)}`;
+                
+                document.getElementById('res-nama').innerText = data.nama_pelapor;
+                document.getElementById('res-kategori').innerText = data.kategori;
+                document.getElementById('res-lokasi').innerText = data.lokasi;
+                document.getElementById('res-deskripsi').innerText = data.deskripsi;
+                
+                if (data.lampiran_url && data.lampiran_url.startsWith('data:image')) {
+                    document.getElementById('res-lampiran-container').innerHTML = `<img src="${data.lampiran_url}" class="max-h-40 rounded border mt-2">`;
+                } else {
+                    document.getElementById('res-lampiran-container').innerHTML = `<span class="text-xs text-gray-400 italic">Tidak ada lampiran</span>`;
+                }
+
+                // Render Timeline
+                let timelineHTML = '';
+                timeline.forEach((t, i) => {
+                    const isLatest = i === 0;
+                    timelineHTML += `
+                    <div class="mb-6 ml-6 relative">
+                        <span class="absolute -left-9 flex items-center justify-center w-6 h-6 bg-${isLatest ? 'primary' : 'gray-300'} rounded-full ring-4 ring-white text-white text-xs">
+                            <i class="fas ${isLatest ? 'fa-check' : 'fa-history'}"></i>
+                        </span>
+                        <h4 class="text-sm font-semibold text-gray-800">${t.status_baru} <span class="text-xs font-normal text-gray-500 ml-2 border bg-white px-2 py-0.5 rounded-full"><i class="fas fa-user-circle mr-1"></i>${t.user_id}</span></h4>
+                        <p class="text-xs text-gray-500 mb-1">${formatDate(t.created_at)}</p>
+                        <p class="text-sm text-gray-700 bg-white p-3 rounded border shadow-sm mt-2">${t.catatan}</p>
+                    </div>`;
+                });
+                document.getElementById('res-timeline').innerHTML = timelineHTML;
+
+                // Handle Survei Visibilitas
+                if (data.status === 'Selesai') {
+                    document.getElementById('survei-container').classList.remove('hidden');
+                    setRating(0); // reset
+                } else {
+                    document.getElementById('survei-container').classList.add('hidden');
+                }
+
+            } else {
+                document.getElementById('track-result').classList.add('hidden');
+                showToast(res.message, 'error');
+            }
+        }
+
+        // Survei Function
+        function setRating(r) {
+            currentRating = r;
+            const stars = document.getElementById('star-rating').children;
+            for(let i=0; i<5; i++) {
+                if(i < r) {
+                    stars[i].classList.remove('text-gray-300');
+                    stars[i].classList.add('text-yellow-400');
+                } else {
+                    stars[i].classList.add('text-gray-300');
+                    stars[i].classList.remove('text-yellow-400');
+                }
+            }
+        }
+        async function submitSurvei() {
+            if (currentRating === 0) return showToast('Pilih bintang rating terlebih dahulu', 'error');
+            setButtonLoading('btn-survei', true, 'Mengirim...');
+            const ulasan = document.getElementById('inp-ulasan').value;
+            const res = await apiCall('submitSurvei', { tiket_id: activeTicketId, rating: currentRating, ulasan });
+            setButtonLoading('btn-survei', false, 'Kirim Penilaian');
+            if (res.status === 'success') {
+                showToast(res.message);
+                document.getElementById('survei-container').innerHTML = `<p class="text-green-600 font-bold"><i class="fas fa-check-circle mr-2"></i>Penilaian telah dikirim. Terima kasih!</p>`;
+            }
+        }
+
+        // ==========================================
+        // 6. DASHBOARD & ADMIN MODULES
+        // ==========================================
+        let rawData = [];
+
+        async function loadDashboard() {
+            // Stats
+            const statRes = await apiCall('getStats');
+            if (statRes.status === 'success') {
+                document.getElementById('stat-total').innerText = statRes.data.total;
+                document.getElementById('stat-menunggu').innerText = statRes.data.menunggu;
+                document.getElementById('stat-diproses').innerText = statRes.data.diproses;
+                document.getElementById('stat-selesai').innerText = statRes.data.selesai;
+            }
+
+            // Table Data
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8"><span class="loader"></span> Memuat data...</td></tr>`;
+            
+            const tableRes = await apiCall('getAll');
+            if (tableRes.status === 'success') {
+                rawData = tableRes.data;
+                renderTable();
+            } else {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-red-500 p-8">Gagal memuat data</td></tr>`;
+            }
+        }
+
+        function renderTable() {
+            const filterStat = document.getElementById('filter-status').value;
+            const q = document.getElementById('search-tiket').value.toLowerCase();
+            
+            let filtered = rawData.filter(d => {
+                const matchStatus = filterStat ? d.status === filterStat : true;
+                const matchQ = d.tiket.toLowerCase().includes(q) || d.nama_pelapor.toLowerCase().includes(q);
+                return matchStatus && matchQ;
+            });
+
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('table-empty');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            let html = '';
+            filtered.forEach(d => {
+                html += `
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="p-4">
+                        <div class="font-mono font-bold text-gray-800">${d.tiket}</div>
+                        <div class="text-xs text-gray-500 mt-1">${formatDate(d.created_at)}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-semibold text-gray-700">${d.nama_pelapor}</div>
+                        <div class="text-xs text-gray-500"><i class="fas fa-phone-alt text-gray-400 mr-1"></i>${d.telepon}</div>
+                    </td>
+                    <td class="p-4 text-sm text-gray-600">${d.kategori}</td>
+                    <td class="p-4">
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(d.status)}">${d.status}</span>
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="openModal('${d.id}')" class="bg-blue-50 hover:bg-blue-100 text-primary p-2 rounded transition" title="Lihat & Proses">
+                            <i class="fas fa-tasks"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function openModal(id) {
+            const d = rawData.find(x => x.id === id);
+            if (!d) return;
+            
+            document.getElementById('upd-id').value = id;
+            document.getElementById('upd-status').value = d.status;
+            document.getElementById('upd-catatan').value = '';
+
+            let imgHtml = '';
+            if (d.lampiran_url) imgHtml = `<img src="${d.lampiran_url}" class="max-w-full h-auto mt-2 rounded border max-h-64 object-contain">`;
+
+            document.getElementById('modal-content').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                        <p class="text-gray-500 text-xs">TIKET / TANGGAL</p>
+                        <p class="font-bold text-lg font-mono">${d.tiket}</p>
+                        <p class="text-gray-700">${formatDate(d.created_at)}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 text-xs">STATUS SAAT INI</p>
+                        <span class="px-3 py-1 mt-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(d.status)}">${d.status}</span>
+                    </div>
+                </div>
+                <div class="bg-gray-50 p-4 rounded border mb-4">
+                    <h4 class="font-bold border-b pb-2 mb-2 text-gray-700">Info Pelapor</h4>
+                    <p><strong>NIK:</strong> ${d.nik}</p>
+                    <p><strong>Nama:</strong> ${d.nama_pelapor}</p>
+                    <p><strong>Telepon:</strong> ${d.telepon}</p>
+                </div>
+                <div>
+                    <h4 class="font-bold border-b pb-2 mb-2 text-gray-700">Detail Laporan</h4>
+                    <p><strong>Kategori:</strong> ${d.kategori}</p>
+                    <p><strong>Lokasi:</strong> ${d.lokasi}</p>
+                    <p class="mt-2 text-gray-800 bg-yellow-50 p-3 rounded border border-yellow-100">${d.deskripsi}</p>
+                    ${imgHtml}
+                </div>
+            `;
+            
+            document.getElementById('modal-detail').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-detail').classList.add('hidden');
+        }
+
+        async function handleUpdateStatus(e) {
+            e.preventDefault();
+            const user = JSON.parse(localStorage.getItem('session_pengaduan'));
+            
+            const payload = {
+                id: document.getElementById('upd-id').value,
+                status_baru: document.getElementById('upd-status').value,
+                catatan: document.getElementById('upd-catatan').value,
+                user_name: user ? user.name : 'Sistem'
+            };
+
+            setButtonLoading('btn-update', true, 'Simpan...');
+            const res = await apiCall('updateStatus', payload);
+            setButtonLoading('btn-update', false, 'Simpan & Update');
+
+            if (res.status === 'success') {
+                showToast(res.message);
+                closeModal();
+                loadDashboard(); // Refresh data
+            } else {
+                showToast(res.message, 'error');
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            updateNavState();
+            // Cek hash url jika ada
+            navigate('home');
+        });
+
+    </script>
+</body>
+</html>
